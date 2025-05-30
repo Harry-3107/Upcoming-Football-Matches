@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upcoming Football Matches</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        gap-sm {
+            gap: 1vw;
+        }
+        h1 {
+            font-size: 6vw;
+        }
+
+        label,
+        select,
+        p,
+        button {
+            font-size: 3.5vw;
+        }
+
+        @media (min-width: 768px) {
+            h1 {
+                font-size: 2.5vw;
+            }
+
+            label,
+            select,
+            p,
+            button {
+                font-size: 1.5vw;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            h1 {
+                font-size: 2vw;
+            }
+
+            label,
+            select,
+            p,
+            button {
+                font-size: 1vw;
+            }
+        }
+
+        /* Logo responsiveness */
+        .team-logo {
+            width: 8vw;
+            height: 8vw;
+            object-fit: contain;
+        }
+
+        @media (min-width: 768px) {
+            .team-logo {
+                width: 4vw;
+                height: 4vw;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .team-logo {
+                width: 3vw;
+                height: 3vw;
+            }
+        }
+
+        .match-card {
+            margin-bottom: 20px;
+        }
+
+        .match-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1vw;
+        }
+
+        .match-info div {
+            display: flex;
+            align-items: center;
+            gap: 0.5vw;
+        }
+
+        .card-body {
+            padding: 3vw;
+        }
+
+        .btn-lg {
+            padding: 1vw 2vw;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="container py-4">
+        <div class="row">
+            <div class="col-md-6 col-12">
+                <h1 class="text-center text-md-left">Upcoming Football Matches</h1>
+            </div>
+            <div class="col-md-6 col-12 text-center text-md-right mt-3 mt-md-0">
+                <button id="fetchMatches" class="btn btn-primary btn-lg">Fetch Matches</button>
+            </div>
+        </div>
+        <div class="row pt-3">
+            <div class="col-md-6 col-12 mb-3 mb-md-0">
+                <label for="leagueSelect">Select League:</label>
+                <select id="leagueSelect" class="form-control">
+                    <option value="">-- Select League --</option>
+                </select>
+            </div>
+            <div class="col-md-6 col-12">
+                <label for="teamSelect">Select Team:</label>
+                <select id="teamSelect" class="form-control">
+                    <option value="">Select Team</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <section class="container py-4">
+        <div id="matches" class="row">
+            <!-- Match cards go here -->
+        </div>
+    </section>
+
+    <footer class="container text-center py-4">
+        <p class="mb-0">&copy; 2025 SportsOrca | Data powered by Football-Data.org</p>
+    </footer>
+
+    <script>
+        const BASE_URL = 'https://upcoming-football-matches.onrender.com/api';
+        const leagueSelect = document.getElementById('leagueSelect');
+        const teamSelect = document.getElementById('teamSelect');
+        const matchesContainer = document.getElementById('matches');
+
+        async function fetchLeagues() {
+            leagueSelect.innerHTML = '<option value="">-- Select League --</option>';
+            try {
+                const response = await fetch(`${BASE_URL}/leagues`);
+                const data = await response.json();
+
+                if (!data.competitions || data.competitions.length === 0) {
+                    leagueSelect.innerHTML += '<option disabled>No leagues available</option>';
+                    return;
+                }
+
+                data.competitions.forEach(competition => {
+                    const option = document.createElement('option');
+                    option.value = competition.code;
+                    option.text = competition.name;
+                    leagueSelect.appendChild(option);
+                });
+
+                leagueSelect.addEventListener('change', fetchTeams);
+            } catch (error) {
+                console.error('Error fetching leagues:', error);
+                leagueSelect.innerHTML += '<option disabled>Error loading leagues</option>';
+            }
+        }
+
+        async function fetchTeams() {
+            const leagueCode = leagueSelect.value;
+            teamSelect.innerHTML = '<option value="">Select Team</option>';
+            if (!leagueCode) return;
+
+            try {
+                const res = await fetch(`${BASE_URL}/teams/${leagueCode}`);
+                const data = await res.json();
+                data.teams.forEach(team => {
+                    const option = document.createElement('option');
+                    option.value = team.id;
+                    option.text = team.name;
+                    teamSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error('Failed to load teams', err);
+            }
+        }
+
+        async function fetchMatches() {
+            const teamId = teamSelect.value;
+            matchesContainer.innerHTML = '';
+
+            if (!teamId) {
+                matchesContainer.innerHTML = '<div class="col-12 text-center">Please select a team.</div>';
+                return;
+            }
+
+            matchesContainer.innerHTML = '<div class="col-12 text-center">Loading matches...</div>';
+
+            try {
+                const res = await fetch(`${BASE_URL}/matches/${teamId}`);
+                const data = await res.json();
+
+                if (!data.matches || data.matches.length === 0) {
+                    matchesContainer.innerHTML = '<div class="col-12 text-center text-warning">No upcoming matches found.</div>';
+                    return;
+                }
+
+                displayMatches(data.matches);
+            } catch (err) {
+                console.error('Failed to fetch matches', err);
+                matchesContainer.innerHTML = '<div class="col-12 text-center text-danger">Failed to load matches.</div>';
+            }
+        }
+
+        function displayMatches(matches) {
+            matchesContainer.innerHTML = '';
+            matches.forEach(match => {
+                const home = match.homeTeam.name;
+                const away = match.awayTeam.name;
+                const date = new Date(match.utcDate).toLocaleString();
+                const homeLogo = match.homeTeam.crest || '';
+                const awayLogo = match.awayTeam.crest || '';
+
+                const card = document.createElement('div');
+                card.className = 'col-md-6 col-12 match-card';
+                card.innerHTML = `
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <div class="match-info mb-2">
+                <div class="d-flex align-items-center gap-sm">
+                    <img src="${homeLogo}" alt="${home} Logo" class="team-logo" />
+                    <strong>${home}</strong>
+                </div>
+                <span class="mx-2">vs</span>
+                <div class="d-flex align-items-center gap-sm">
+                    <img src="${awayLogo}" alt="${away} Logo" class="team-logo" />
+                    <strong>${away}</strong>
+                </div>
+                </div>
+                <p class="mb-2"><strong>Date & Time:</strong> ${date}</p>
+                
+            </div>
+          </div>
+        `;
+                matchesContainer.appendChild(card);
+            });
+        }
+
+        document.getElementById('fetchMatches').addEventListener('click', fetchMatches);
+        fetchLeagues();
+    </script>
+</body>
+
+</html>
